@@ -864,7 +864,7 @@ export default function App() {
       )}
 
       {activeTab === 'PREDICTION' && (
-        <PredictionSection rounds={rounds} />
+        <PredictionSection rounds={rounds} adminSecret={adminSecret} />
       )}
 
       {activeTab === 'ADMIN' && adminUnlocked && (

@@ -21,7 +21,7 @@
       "react-app"
     ]
   },
-  "proxy": "https://api.dealer.degencoinflip.com",
+  "proxy": "https://crash-collector-production-9663.up.railway.app",
   "browserslist": {
     "production": [
       ">0.2%",

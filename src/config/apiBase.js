@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = '';
+const DEFAULT_API_BASE = 'https://crash-collector-production-9663.up.railway.app';
 
 function normalizeApiBase(input) {
   const raw = String(input || '').trim();

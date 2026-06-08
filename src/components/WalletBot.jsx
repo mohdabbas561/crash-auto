@@ -18,6 +18,7 @@ const SITE_CASHOUT_API = `${BACKEND_API_BASE}/bot/site-cashout`;
 const ORACLE_PREDICT_API = `${BACKEND_API_BASE}/predict/oracle`;
 const NONCE_MESSAGE_PREFIX = 'I am signing my one-time nonce: ';
 const LIVE_VIEW_WS_URL = 'wss://crashview-api.degencoinflip.com';
+const DEFAULT_BOT_RPC_URL = 'https://api.mainnet-beta.solana.com';
 const LIVE_PHASE = {
   IDLE: 0,
   WAITING: 1,
@@ -207,21 +208,33 @@ async function fetchOracleTargetSnapshot(targetLabel, timeoutMs = 12000) {
 }
 
 async function fetchBotConfig() {
-  const url = `${BACKEND_API_BASE}/bot/config?_ts=${Date.now()}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) {
-    const err = await res.text().catch(() => String(res.status));
-    throw new Error(`Bot config error (${res.status}): ${err}`);
-  }
-  const json = await res.json();
-  const config = json?.config || {};
-  if (!config.rpcUrl) {
-    throw new Error('Bot config missing rpcUrl');
-  }
-  return {
-    rpcUrl: String(config.rpcUrl).trim(),
-    playerAccountPDA: String(config.playerAccountPDA || '').trim(),
+  const fallbackConfig = {
+    rpcUrl: DEFAULT_BOT_RPC_URL,
+    playerAccountPDA: '',
+    source: 'fallback',
   };
+
+  try {
+    const url = `${BACKEND_API_BASE}/bot/config?_ts=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = await res.text().catch(() => String(res.status));
+      return { ...fallbackConfig, warning: `Bot config unavailable (${res.status}): ${err}` };
+    }
+
+    const json = await res.json();
+    const config = json?.config || {};
+    return {
+      rpcUrl: String(config.rpcUrl || DEFAULT_BOT_RPC_URL).trim(),
+      playerAccountPDA: String(config.playerAccountPDA || '').trim(),
+      source: String(config.source || 'backend'),
+    };
+  } catch (error) {
+    return {
+      ...fallbackConfig,
+      warning: String(error?.message || error || 'Bot config unavailable'),
+    };
+  }
 }
 
 async function saveWalletConfigOnBackend({
@@ -931,8 +944,11 @@ export default function WalletBot({
     }
     const config = await fetchBotConfig();
     botConfigRef.current = config;
+    if (config?.warning) {
+      addLog(`Bot config fallback: ${config.warning}`, 'warn');
+    }
     return config;
-  }, []);
+  }, [addLog]);
 
   const ensureSiteSession = useCallback(async (walletId, keypairBytes, forceRefresh = false) => {
     if (!forceRefresh && isSessionFresh(authSessionRef.current, walletId)) {
